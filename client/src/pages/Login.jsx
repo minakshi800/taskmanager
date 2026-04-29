@@ -1,96 +1,85 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
     try {
       await login(email, password);
+      toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-bg-orbs">
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
-        <div className="orb orb-3" />
+    <div className="auth-container">
+      <div className="auth-bg">
+        <div className="auth-orb orb-1"></div>
+        <div className="auth-orb orb-2"></div>
       </div>
-
-      <div className="auth-card animate-scale-in">
+      
+      <div className="auth-card glass-card animate-scale-in">
         <div className="auth-header">
-          <div className="auth-logo">
-            <div className="logo-icon">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                <path d="M2 17l10 5 10-5"/>
-                <path d="M2 12l10 5 10-5"/>
-              </svg>
-            </div>
-            <span className="logo-text">TaskFlow</span>
+          <div className="logo-icon" style={{ margin: '0 auto 16px', width: 48, height: 48 }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
           </div>
-          <h1>Welcome back</h1>
-          <p>Sign in to continue to your workspace</p>
+          <h1>Welcome Back</h1>
+          <p>Sign in to continue to TaskFlow</p>
         </div>
-
-        {error && <div className="error-message">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="input-group">
-            <label htmlFor="login-email">Email</label>
-            <input
-              id="login-email"
-              type="email"
-              className="input-field"
-              placeholder="you@example.com"
+            <label>Email Address</label>
+            <input 
+              type="email" 
+              className="input-field" 
+              placeholder="you@example.com" 
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               required
+              id="input-email"
             />
           </div>
-
+          
           <div className="input-group">
-            <label htmlFor="login-password">Password</label>
-            <input
-              id="login-password"
-              type="password"
-              className="input-field"
-              placeholder="••••••••"
+            <label>Password</label>
+            <input 
+              type="password" 
+              className="input-field" 
+              placeholder="••••••••" 
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               required
+              id="input-password"
             />
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary auth-submit"
-            disabled={loading}
-            id="btn-login"
-          >
-            {loading ? <div className="spinner" style={{ width: 18, height: 18 }} /> : 'Sign In'}
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={loading} id="btn-login">
+            {loading ? <div className="spinner" style={{ width: 20, height: 20 }} /> : 'Sign In'}
           </button>
         </form>
 
-        <p className="auth-footer-text">
-          Don't have an account? <Link to="/signup">Create one</Link>
-        </p>
+        <div className="auth-footer">
+          Don't have an account? <Link to="/signup">Sign up</Link>
+        </div>
       </div>
     </div>
   );

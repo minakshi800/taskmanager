@@ -1,197 +1,126 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import { useAuth } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
+import Skeleton from '../components/Skeleton';
 import './Dashboard.css';
 
 export default function Dashboard() {
-  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getDashboard()
-      .then(setData)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const loadDashboard = async () => {
+      try {
+        const res = await api.getDashboard();
+        setData(res);
+      } catch (err) {
+        console.error('Failed to load dashboard', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadDashboard();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="app-layout">
-        <Sidebar />
-        <main className="main-content">
-          <div className="loading-screen" style={{ minHeight: 'auto', padding: '100px 0' }}>
-            <div className="spinner" />
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  const { stats, recentTasks, projectStats, myTasks } = data || {
-    stats: { total: 0, todo: 0, in_progress: 0, done: 0, overdue: 0 },
-    recentTasks: [], projectStats: [], myTasks: [],
-  };
-
-  const statCards = [
-    { label: 'Total Tasks', value: stats.total, icon: '📋', color: '#7c3aed' },
-    { label: 'In Progress', value: stats.in_progress, icon: '🔄', color: '#f59e0b' },
-    { label: 'Completed', value: stats.done, icon: '✅', color: '#10b981' },
-    { label: 'Overdue', value: stats.overdue, icon: '⚠️', color: '#ef4444' },
-  ];
-
-  const formatDate = (d) => {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  const isOverdue = (task) => {
-    return task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done';
-  };
-
-  const statusLabel = (s) => s === 'in_progress' ? 'In Progress' : s === 'todo' ? 'To Do' : 'Done';
+  const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   return (
     <div className="app-layout">
       <Sidebar />
       <main className="main-content">
-        <div className="dashboard-header animate-fade-in">
-          <div>
-            <h1 className="page-title">Welcome back, {user?.name?.split(' ')[0]} 👋</h1>
-            <p className="page-subtitle">Here's what's happening across your projects</p>
-          </div>
-        </div>
-
-        {/* Stats */}
+        <h1 className="page-title animate-fade-in">Dashboard</h1>
+        
+        {/* Stats Grid */}
         <div className="stats-grid">
-          {statCards.map((s, i) => (
-            <div key={s.label} className={`stat-card glass-card animate-fade-in-up stagger-${i + 1}`}>
-              <div className="stat-icon" style={{ background: `${s.color}20`, color: s.color }}>
-                {s.icon}
-              </div>
-              <div className="stat-info">
-                <span className="stat-value">{s.value || 0}</span>
-                <span className="stat-label">{s.label}</span>
-              </div>
+          {[
+            { label: 'Total Tasks', key: 'total', color: 'var(--accent-purple)' },
+            { label: 'To Do', key: 'todo', color: 'var(--status-todo)' },
+            { label: 'In Progress', key: 'in_progress', color: 'var(--status-progress)' },
+            { label: 'Done', key: 'done', color: 'var(--status-done)' },
+            { label: 'Overdue', key: 'overdue', color: 'var(--status-overdue)' }
+          ].map((stat, i) => (
+            <div key={stat.label} className={`stat-card glass-card animate-fade-in-up stagger-${i+1}`}>
+              <span className="stat-label">{stat.label}</span>
+              {loading ? (
+                 <Skeleton type="title" style={{ width: '60px', marginTop: '4px' }} />
+              ) : (
+                 <span className="stat-value" style={{ color: stat.color }}>
+                   {data?.stats[stat.key] || 0}
+                 </span>
+              )}
             </div>
           ))}
         </div>
 
         <div className="dashboard-grid">
-          {/* My Tasks */}
-          <div className="dashboard-section glass-card animate-fade-in-up stagger-3">
-            <div className="section-header">
-              <h2>My Tasks</h2>
-              <span className="badge badge-in_progress">{myTasks.length} pending</span>
-            </div>
-            {myTasks.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">🎉</div>
-                <h3>All caught up!</h3>
-                <p>No pending tasks assigned to you</p>
-              </div>
-            ) : (
-              <div className="task-list">
-                {myTasks.map(task => (
-                  <div key={task.id} className={`task-list-item ${isOverdue(task) ? 'overdue' : ''}`}>
-                    <div className="task-list-status">
-                      <span className={`status-dot status-${task.status}`} />
-                    </div>
-                    <div className="task-list-info">
-                      <span className="task-list-title">{task.title}</span>
-                      <span className="task-list-meta">{task.project_name}</span>
-                    </div>
-                    <div className="task-list-right">
-                      {task.due_date && (
-                        <span className={`task-date ${isOverdue(task) ? 'overdue' : ''}`}>
-                          {formatDate(task.due_date)}
-                        </span>
-                      )}
-                      <span className={`badge badge-${task.priority}`}>{task.priority}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Projects Overview */}
-          <div className="dashboard-section glass-card animate-fade-in-up stagger-4">
-            <div className="section-header">
-              <h2>Projects</h2>
-              <Link to="/projects" className="btn btn-ghost btn-sm">View all →</Link>
-            </div>
-            {projectStats.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">📁</div>
-                <h3>No projects yet</h3>
-                <p>Create your first project to get started</p>
-                <Link to="/projects" className="btn btn-primary btn-sm" style={{ marginTop: 12 }}>
-                  Create Project
-                </Link>
-              </div>
-            ) : (
-              <div className="project-stats-list">
-                {projectStats.map(p => {
-                  const progress = p.task_count > 0 ? Math.round((p.done_count / p.task_count) * 100) : 0;
-                  return (
-                    <Link key={p.id} to={`/projects/${p.id}`} className="project-stat-item">
-                      <div className="project-stat-info">
-                        <span className="project-stat-name">{p.name}</span>
-                        <span className="project-stat-meta">
-                          {p.task_count} tasks · {p.member_count} members
-                        </span>
-                      </div>
-                      <div className="project-stat-progress">
-                        <span className="progress-label">{progress}%</span>
-                        <div className="progress-bar">
-                          <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="dashboard-section glass-card animate-fade-in-up stagger-5" style={{ marginTop: 24 }}>
-          <div className="section-header">
-            <h2>Recent Activity</h2>
-          </div>
-          {recentTasks.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">📝</div>
-              <h3>No recent activity</h3>
-              <p>Tasks will appear here once created</p>
-            </div>
-          ) : (
-            <div className="task-list">
-              {recentTasks.slice(0, 8).map(task => (
-                <div key={task.id} className="task-list-item">
-                  <div className="task-list-status">
-                    <span className={`status-dot status-${task.status}`} />
-                  </div>
-                  <div className="task-list-info">
-                    <span className="task-list-title">{task.title}</span>
-                    <span className="task-list-meta">{task.project_name}</span>
-                  </div>
-                  <div className="task-list-right">
-                    <span className={`badge badge-${task.status}`}>{statusLabel(task.status)}</span>
-                    {task.assigned_to_name && (
-                      <div className="avatar avatar-sm" style={{ background: task.assigned_to_color }}>
-                        {task.assigned_to_name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
+          {/* Recent Activity */}
+          <div className="dashboard-section animate-fade-in-up stagger-4">
+            <h2 className="section-title">Recent Activity</h2>
+            <div className="recent-activity glass-card">
+              {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <Skeleton type="text" count={5} style={{ height: '50px' }} />
                 </div>
-              ))}
+              ) : data?.recentTasks.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">📝</div>
+                  <h3>No recent activity</h3>
+                  <p>Create some tasks to see them here.</p>
+                </div>
+              ) : (
+                data?.recentTasks.map(task => (
+                  <div key={task.id} className="activity-item">
+                    <div className="activity-icon" style={{ background: `var(--status-${task.status === 'in_progress' ? 'progress' : task.status})` }} />
+                    <div className="activity-content">
+                      <p className="activity-text">
+                        <strong>{task.title}</strong> was updated in <span>{task.project_name}</span>
+                      </p>
+                      <span className="activity-time">{formatDate(task.updated_at)}</span>
+                    </div>
+                    <span className={`badge badge-${task.status}`}>{task.status.replace('_', ' ')}</span>
+                  </div>
+                ))
+              )}
             </div>
-          )}
+          </div>
+
+          {/* My Tasks */}
+          <div className="dashboard-section animate-fade-in-up stagger-5">
+            <h2 className="section-title">My Pending Tasks</h2>
+            <div className="my-tasks glass-card">
+              {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <Skeleton type="text" count={4} style={{ height: '60px' }} />
+                </div>
+              ) : data?.myTasks.length === 0 ? (
+                <div className="empty-state" style={{ padding: '32px 16px' }}>
+                  <div className="empty-state-icon">🎉</div>
+                  <h3>All caught up!</h3>
+                  <p>You have no pending tasks assigned to you.</p>
+                </div>
+              ) : (
+                data?.myTasks.map(task => {
+                  const isOverdue = task.due_date && new Date(task.due_date) < new Date();
+                  return (
+                    <div key={task.id} className="task-item">
+                      <div className="task-item-main">
+                        <h4 className="task-item-title">{task.title}</h4>
+                        <span className="task-item-project">{task.project_name}</span>
+                      </div>
+                      <div className="task-item-meta">
+                        <span className={`badge badge-${task.priority}`}>{task.priority}</span>
+                        {task.due_date && (
+                          <span className={`task-date ${isOverdue ? 'overdue' : ''}`}>
+                            {formatDate(task.due_date)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
       </main>
     </div>

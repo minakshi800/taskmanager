@@ -1,39 +1,45 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { api } from '../api/client';
 import Sidebar from '../components/Sidebar';
 import Modal from '../components/Modal';
+import Skeleton from '../components/Skeleton';
 import './Projects.css';
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [error, setError] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ name: '', description: '' });
+  const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
 
-  const load = () => {
-    api.getProjects().then(d => setProjects(d.projects)).catch(console.error).finally(() => setLoading(false));
+  const loadProjects = async () => {
+    try {
+      const res = await api.getProjects();
+      setProjects(res.projects);
+    } catch (err) {
+      toast.error('Failed to load projects');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { loadProjects(); }, []);
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setError('');
-    setCreating(true);
+  const handleCreate = async () => {
+    setSaving(true);
     try {
-      await api.createProject({ name, description });
+      await api.createProject(form);
       setShowModal(false);
-      setName('');
-      setDescription('');
-      load();
+      setForm({ name: '', description: '' });
+      toast.success('Project created successfully!');
+      loadProjects();
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message || 'Failed to create project');
     } finally {
-      setCreating(false);
+      setSaving(false);
     }
   };
 
@@ -42,72 +48,80 @@ export default function Projects() {
       <Sidebar />
       <main className="main-content">
         <div className="projects-header animate-fade-in">
-          <div>
-            <h1 className="page-title">Projects</h1>
-            <p className="page-subtitle">Manage your team projects</p>
-          </div>
-          <button className="btn btn-primary" onClick={() => setShowModal(true)} id="btn-new-project">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <h1 className="page-title" style={{ marginBottom: 0 }}>Projects</h1>
+          <button className="btn btn-primary" onClick={() => setShowModal(true)} id="btn-create-project">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             New Project
           </button>
         </div>
 
-        {loading ? (
-          <div className="loading-screen" style={{ minHeight: 'auto', padding: '100px 0' }}><div className="spinner" /></div>
-        ) : projects.length === 0 ? (
-          <div className="empty-state glass-card animate-fade-in-up" style={{ padding: '80px 24px' }}>
-            <div className="empty-state-icon">📁</div>
-            <h3>No projects yet</h3>
-            <p>Create your first project to start managing tasks</p>
-            <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ marginTop: 16 }}>Create Project</button>
-          </div>
-        ) : (
-          <div className="projects-grid">
-            {projects.map((p, i) => {
+        <div className="projects-grid">
+          {loading ? (
+            Array(3).fill(0).map((_, i) => (
+               <div key={i} className="glass-card" style={{ padding: '24px' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                   <Skeleton type="avatar" style={{ width: '42px', height: '42px', borderRadius: '12px' }} />
+                 </div>
+                 <Skeleton type="title" />
+                 <Skeleton type="text" count={2} />
+                 <Skeleton type="text" style={{ marginTop: '24px', height: '4px' }} />
+               </div>
+            ))
+          ) : projects.length === 0 ? (
+            <div className="glass-card empty-state animate-fade-in-up" style={{ gridColumn: '1 / -1' }}>
+              <div className="empty-state-icon">🚀</div>
+              <h3>No projects yet</h3>
+              <p>Create your first project to get started.</p>
+              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setShowModal(true)}>Create Project</button>
+            </div>
+          ) : (
+            projects.map((p, i) => {
               const progress = p.task_count > 0 ? Math.round((p.done_count / p.task_count) * 100) : 0;
               return (
-                <Link key={p.id} to={`/projects/${p.id}`} className={`project-card glass-card animate-fade-in-up stagger-${Math.min(i + 1, 5)}`}>
+                <div key={p.id} className={`project-card glass-card animate-fade-in-up stagger-${(i%5)+1}`} onClick={() => navigate(`/projects/${p.id}`)}>
                   <div className="project-card-header">
-                    <div className="project-card-icon" style={{ background: `linear-gradient(135deg, #7c3aed, #06b6d4)` }}>
-                      {p.name.charAt(0).toUpperCase()}
+                    <div className="project-card-icon" style={{ background: 'var(--gradient-primary)' }}>
+                      {p.name.substring(0, 2).toUpperCase()}
                     </div>
-                    <span className={`badge badge-${p.user_role}`}>{p.user_role}</span>
+                    {p.user_role === 'admin' && <span className="badge badge-admin">Admin</span>}
                   </div>
                   <h3 className="project-card-name">{p.name}</h3>
-                  <p className="project-card-desc">{p.description || 'No description'}</p>
-                  <div className="project-card-stats">
-                    <span>{p.task_count} tasks</span>
-                    <span>·</span>
-                    <span>{p.member_count} members</span>
-                  </div>
+                  <p className="project-card-desc">{p.description || 'No description provided.'}</p>
+                  
                   <div className="project-card-progress">
-                    <div className="progress-bar">
-                      <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
+                    <div style={{ flex: 1 }}>
+                      <div className="project-card-stats" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span>Progress</span>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{progress}%</span>
+                      </div>
+                      <div className="progress-bar">
+                        <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
+                      </div>
                     </div>
-                    <span className="progress-label">{progress}%</span>
                   </div>
-                </Link>
+                  
+                  <div className="project-card-stats" style={{ marginTop: 8 }}>
+                    <span>👥 {p.member_count} members</span>
+                    <span>•</span>
+                    <span>📝 {p.task_count} tasks</span>
+                  </div>
+                </div>
               );
-            })}
-          </div>
-        )}
+            })
+          )}
+        </div>
 
         <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Create New Project" footer={
-          <>
-            <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleCreate} disabled={creating || !name.trim()} id="btn-create-project">
-              {creating ? <div className="spinner" style={{ width: 16, height: 16 }} /> : 'Create Project'}
-            </button>
-          </>
+          <><button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleCreate} disabled={saving || !form.name.trim()} id="btn-submit-project">{saving ? <div className="spinner" style={{ width: 16, height: 16 }} /> : 'Create'}</button></>
         }>
-          {error && <div className="error-message">{error}</div>}
           <div className="input-group">
-            <label htmlFor="project-name">Project Name</label>
-            <input id="project-name" className="input-field" placeholder="e.g. Website Redesign" value={name} onChange={e => setName(e.target.value)} />
+            <label>Project Name</label>
+            <input className="input-field" placeholder="e.g. Website Redesign" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
           </div>
           <div className="input-group">
-            <label htmlFor="project-desc">Description</label>
-            <textarea id="project-desc" className="input-field" placeholder="What is this project about?" value={description} onChange={e => setDescription(e.target.value)} rows={3} />
+            <label>Description</label>
+            <textarea className="input-field" placeholder="What is this project about?" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} />
           </div>
         </Modal>
       </main>
