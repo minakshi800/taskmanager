@@ -27,15 +27,15 @@ export default function Signup() {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-bg">
-        <div className="auth-orb orb-1" style={{ left: '60%' }}></div>
-        <div className="auth-orb orb-2" style={{ left: '20%', background: 'var(--accent-cyan)' }}></div>
+    <div className="auth-page">
+      <div className="auth-bg-orbs">
+        <div className="orb orb-1" style={{ left: '60%' }}></div>
+        <div className="orb orb-2" style={{ left: '20%', background: 'var(--accent-cyan)' }}></div>
       </div>
       
       <div className="auth-card glass-card animate-scale-in">
         <div className="auth-header">
-          <div className="logo-icon" style={{ margin: '0 auto 16px', width: 48, height: 48 }}>
+          <div className="auth-logo" style={{ margin: '0 auto 16px', width: 48, height: 48, justifyContent: 'center' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5z"/>
               <path d="M2 17l10 5 10-5"/>
@@ -87,12 +87,12 @@ export default function Signup() {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={loading} id="btn-signup">
+          <button type="submit" className="btn btn-primary auth-submit" disabled={loading} id="btn-signup">
             {loading ? <div className="spinner" style={{ width: 20, height: 20 }} /> : 'Create Account'}
           </button>
         </form>
 
-        <div className="auth-footer">
+        <div className="auth-footer-text">
           Already have an account? <Link to="/login">Sign in</Link>
         </div>
       </div>
